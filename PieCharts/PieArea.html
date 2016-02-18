@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>D3</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/css/bootstrap.css" rel="stylesheet">
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,700,500' rel='stylesheet' type='text/css'>
+    <script src="js/d3.js"></script>
+    <link href="css/style-dark.css" rel="stylesheet" type="text/css"/>
+
+    <style>
+        .widget{
+            background-color: #0c3049;
+        }
+        .header{
+            background-color: #e5d847;
+            color:#2E2A0D;
+            text-shadow: 1px 1px #A19532;
+            text-transform: uppercase;
+            font-weight: 800;
+        }
+
+        body{
+            background-color: #07253b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="widget">
+    <div class="header">Visitors</div>
+    <div id="chart" class="chart-container"></div>
+</div>
+
+<script type="text/javascript">
+
+    var dataset = [
+        { name: 'Returning Visitor', count: 500, growth:115 , percent:81},
+        { name: 'New Visitor', count: 120, growth:135 , percent:19}
+    ];
+
+    var pie=d3.layout.pie()
+            .value(function(d){return d.count})
+            .sort(null);
+
+    var w=300,h=350;
+
+
+    var innerRadius=40;
+
+
+    var color = d3.scale.ordinal()
+            .range(['#fff368', '#f6f1c8']);
+
+    var arc=d3.svg.arc()
+            .outerRadius(function(d){ return d.data.growth;})
+            .innerRadius(innerRadius);
+
+    var svg=d3.select("#chart")
+            .append("svg")
+            .attr({
+                width:w,
+                height:h,
+                class:'shadow'
+            }).append('g')
+            .attr({
+                transform:'translate('+w/2+','+(h-50)/2+')'
+            });
+
+    var id = "md-shadow";
+    var deviation = 2;
+    var offset = 2;
+    var slope = 0.25;
+
+
+    var defs = svg.append("defs");
+
+
+    var filter = defs.append("filter")
+            .attr("id", "drop-shadow")
+            .attr("height", "150%");
+
+
+    filter.append("feGaussianBlur")
+            .attr("in", "SourceAlpha")
+            .attr("stdDeviation", 5)
+            .attr("result", "blur");
+
+    filter.append("feOffset")
+            .attr("in", "blur")
+            .attr("dx", 0)
+            .attr("dy", 0)
+            .attr("result", "offsetBlur");
+
+    filter.append("feFlood")
+            .attr("in", "offsetBlur")
+            .attr("flood-color", "#333")
+            .attr("flood-opacity", ".5")
+            .attr("result", "offsetColor");
+    filter.append("feComposite")
+            .attr("in", "offsetColor")
+            .attr("in2", "offsetBlur")
+            .attr("operator", "in")
+            .attr("result", "offsetBlur");
+
+    var feMerge = filter.append("feMerge");
+
+    feMerge.append("feMergeNode")
+            .attr("in", "offsetBlur");
+    feMerge.append("feMergeNode")
+            .attr("in", "SourceGraphic");
+
+    var path=svg.selectAll('path')
+            .data(pie(dataset))
+            .enter()
+            .append('path')
+            .attr({
+                d:arc,
+                fill:function(d,i){
+                    return color(d.data.name);
+                }
+            })
+            .style("filter", function(d,i){
+                        if(i>0)
+                            return "url(#drop-shadow)";
+                    }
+            );
+
+
+
+    path.transition()
+            .duration(1000)
+            .attrTween('d', function(d) {
+                var interpolate = d3.interpolate({startAngle: 0, endAngle: 0}, d);
+                return function(t) {
+                    return arc(interpolate(t));
+                };
+            });
+
+    var restOfTheData=function(){
+        var text=svg.selectAll('text')
+                .data(pie(dataset))
+                .enter()
+                .append("text")
+                .attr("transform", function (d) {
+                    return "translate(" + arc.centroid(d) + ")";
+                })
+
+                .attr("text-anchor", "middle")
+                .text(function(d){
+                    return d.data.percent+"%" ;
+                })
+                .style({
+                    fill:'#857a00',
+                    'font-size':'20px'
+
+                });
+
+        var legendRectSize=20;
+
+        var legend=svg.selectAll('.legend')
+                .data(color.domain())
+                .enter()
+                .append('g')
+                .attr({
+                    class:'legend',
+                    transform:function(d,i){
+                        //Just a calculation for x & y position
+                        return 'translate(' + ((i*160)-130) + ',160)';
+                    }
+                });
+        legend.append('rect')
+                .attr({
+                    width:legendRectSize,
+                    height:legendRectSize,
+                    rx:20,
+                    ry:20
+                })
+                .style({
+                    fill:color,
+                    stroke:color
+                });
+
+        legend.append('text')
+                .attr({
+                    x:30,
+                    y:15
+                })
+                .text(function(d){
+                    return d;
+                }).style({
+            fill:'#32688c',
+            'font-size':'14px'
+        });
+
+    };
+
+    setTimeout(restOfTheData,1000);
+
+
+</script>
+
+</body>
+</html>
