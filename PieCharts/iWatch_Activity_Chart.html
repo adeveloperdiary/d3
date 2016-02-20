@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>D3</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.5/css/bootstrap.css" rel="stylesheet">
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,700,500' rel='stylesheet' type='text/css'>
+    <link href="css/style-dark.css" rel="stylesheet" type="text/css"/>
+
+    <script src="js/d3.js"></script>
+    <script src="js/utils.js"></script>
+    <style>
+        .shadow {
+            -webkit-filter: drop-shadow( 0px 0px 0px rgba(0,0,0,0) );
+            filter: drop-shadow( 0px 0px 0px rgba(0,0,0,0) );
+        }
+
+        .widget{
+            background-color: #151515;
+        }
+        .header{
+            background-color: #252525;
+        }
+        body{
+            background-color: #2a2a2a;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="widget">
+    <div class="header">Activity</div>
+    <div id="chart" class="chart-container">
+
+    </div>
+</div>
+
+
+<script type="text/javascript">
+
+
+    var createGradient=function(svg,color1,color2,id){
+
+        var defs = svg.append("defs");
+
+        var gradient=defs.append("linearGradient")
+                .attr("id", id)
+                .attr("x1", "0%")
+                .attr("y1", "100%")
+                .attr("x2", "50%")
+                .attr("y2", "0%")
+                .attr("spreadMethod", "pad");
+
+        gradient.append("svg:stop")
+                .attr("offset", "0%")
+                .attr("stop-color", color1)
+                .attr("stop-opacity", 1);
+
+        gradient.append("svg:stop")
+                .attr("offset", "100%")
+                .attr("stop-color", color2)
+                .attr("stop-opacity", 1);
+    };
+
+    var createDropShadow=function(svg,id,stdDeviation,dx,dy){
+
+        var defs = svg.append("defs");
+
+        var filter = defs.append("filter")
+                .attr("id", id);
+
+        filter.append("feGaussianBlur")
+                .attr("in", "SourceAlpha")
+                .attr("stdDeviation", stdDeviation)
+                .attr("result", "blur");
+        filter.append("feOffset")
+                .attr("in", "blur")
+                .attr("dx", dx)
+                .attr("dy", dy)
+                .attr("result", "offsetBlur");
+
+        var feMerge = filter.append("feMerge");
+
+        feMerge.append("feMergeNode")
+                .attr("in", "offsetBlur");
+        feMerge.append("feMergeNode")
+                .attr("in", "SourceGraphic");
+    };
+
+
+    var arcTween=function(transition, newAngle,arc) {
+        transition.attrTween("d", function (d) {
+            var interpolate = d3.interpolate(d.endAngle, newAngle);
+
+            return function (t) {
+                d.endAngle = interpolate(t);
+                return arc(d);
+            };
+        });
+    };
+
+
+    var createCircle=function(svg,outerRadius,innerRadius,color,percent){
+
+        var ratio=percent/100;
+
+        var arcBackground=d3.svg.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(outerRadius)
+                .startAngle(0)
+                .endAngle(2*Math.PI);
+
+        var pathBackground=svg.append('path')
+                .attr({
+                    d:arcBackground
+                })
+                .style({
+                    fill:color,
+                    opacity:.2
+                });
+
+        var arcForeground=d3.svg.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(outerRadius)
+                .cornerRadius(20)
+                .startAngle(-0.05);
+
+        var pathForeground=svg.append('path')
+                .datum({endAngle:0})
+                .attr({
+                    d:arcForeground
+                })
+                .style({
+                    fill:color
+                });
+
+        pathForeground.transition()
+                .duration(1500)
+                .ease('elastic')
+                .call(arcTween,((2*Math.PI))*ratio,arcForeground);
+
+        var chart={path:pathForeground,arc:arcForeground};
+
+        return chart;
+    };
+
+    var updateChart= function (path,arc,percent) {
+
+        var ratio=percent/100;
+
+        path.transition()
+                .duration(1500)
+                .ease('elastic')
+                .call(arcTween,((2*Math.PI))*ratio,arc);
+    };
+
+
+    var addStartImage= function (svg,url,outerRadius) {
+
+        svg.append('image')
+            .attr({
+                'xlink:href':url,
+                width:20,
+                height:20,
+                transform:'translate(0,'+ (-outerRadius+6) +')'
+            });
+
+    };
+
+    var addGradient=function(path,id){
+        path.style({
+            fill:"url('#"+id+"')"
+        });
+    };
+
+    var addDropShadow=function(path,id){
+        path.style({
+            filter:"url('#"+id+"')"
+        });
+    };
+
+    var w=300,h=300;
+    var outerRadius=(w/2);
+    var width=30,gap=2;
+
+    var innerRadius=outerRadius-30;
+
+    var pie=d3.layout.pie()
+            .value(function(d){return d})
+            .sort(null);
+
+    var color=["#e90b3a", "#a0ff03", "#1ad5de"];
+
+    var svg=d3.select("#chart")
+            .append("svg")
+            .attr({
+                width:w,
+                height:h,
+                class:'shadow'
+            }).append('g')
+            .attr({
+                transform:'translate('+w/2+','+h/2+')'
+            });
+
+    var circles=[
+        {name:'activity1',percent:70,color:'#e90b3a',icon:'stand.png'},
+        {name:'activity2',percent:80,color:'#a0ff03',icon:'walk.png'},
+        {name:'activity3',percent:65,color:'#1ad5de',icon:'run.png'}
+    ];
+
+    createGradient(svg,'#fe08b5','#ff1410','gradient');
+    createDropShadow(svg,'dropShadow',4,1,1);
+
+    for(var i=0;i<circles.length;++i){
+        if(i>0){
+            outerRadius=innerRadius-gap;
+        }
+        innerRadius=outerRadius-width;
+
+        circles[i].chart=createCircle(svg,outerRadius,innerRadius,circles[i].color,circles[i].percent);
+
+        if(i==0){
+            addGradient(circles[i].chart.path,'gradient');
+        }
+
+        addDropShadow(circles[i].chart.path,'dropShadow');
+        addStartImage(svg,'http://www.adeveloperdiary.com/wp-content/uploads/2015/11/'+circles[i].icon,outerRadius);
+    }
+
+    var updateData=function(){
+        for(var i=0;i<circles.length;++i) {
+            updateChart(circles[i].chart.path,circles[i].chart.arc,Math.floor((Math.random() * 60) + 20));
+        }
+        setTimeout(updateData,1500);
+    };
+
+    setTimeout(updateData,1500);
+
+</script>
+
+</body>
+</html>
